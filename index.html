@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>World Flag Studio</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111827;color:white;font-family:Arial;overflow-x:hidden}
+button,input{font:inherit}
+button{cursor:pointer;border:0;color:white}
+#menu{min-height:100vh;padding:25px;background:radial-gradient(ellipse at top,#344765,#111827 70%)}
+.brand{text-align:center;margin:15px auto 28px}
+.brand h1{font-size:36px;margin:0;font-weight:900}
+.brand h1 span{color:#6ee7c0}
+.brand p{color:#aabbd2}
+.menu-inner{max-width:1100px;margin:auto}
+.menu-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+.menu-head h2{margin:0}
+.search{background:#26364d;border:1px solid #435875;color:white;padding:13px;border-radius:12px;width:100%;max-width:350px}
+.country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+.country-card{background:#26364d;border:1px solid #3c506b;border-radius:13px;padding:13px;text-align:left;transition:.15s}
+.country-card:hover{transform:translateY(-3px);background:#344b69;border-color:#6ee7c0}
+.country-card img{width:100%;height:75px;object-fit:contain;background:white;border-radius:7px}
+.country-card strong{display:block;margin-top:10px;font-size:14px}
+.country-card small{color:#9eafc7}
+#menuFooter{text-align:center;color:#8192aa;margin:22px}
+#studio{display:none;position:fixed;inset:0;z-index:10;background:#141a26;height:100dvh;width:100vw;overflow:hidden;flex-direction:column}
+#studio.show{display:flex}
+.studio-top{min-height:48px;background:#202b3d;display:flex;align-items:center;justify-content:space-between;padding:5px 12px;gap:8px}
+.studio-top button{background:#354963;border-radius:9px;padding:10px 13px}
+#countryTitle{font-weight:bold;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+#workarea{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}
+.canvas-frame{width:min(100%,1200px);max-height:100%;aspect-ratio:8/5;background:white;border-radius:5px;position:relative;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#outlines{pointer-events:none}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#202b3d;color:white;z-index:5}
+.toolbar{background:#202b3d;padding:9px 10px;display:flex;flex-direction:column;gap:9px}
+.toolrow{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}
+.tool{min-width:48px;height:43px;border-radius:10px;background:#354963;font-size:20px}
+.tool.active{background:#0caa82;box-shadow:0 0 0 2px #7fffd2}
+.tool-label{font-size:10px;display:block;margin-top:2px}
+.tool:hover,.action:hover{filter:brightness(1.2)}
+.palette{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid #aab7c8;cursor:pointer}
+.swatch.active{outline:3px solid #6ee7c0;outline-offset:2px}
+#customColor{width:36px;height:32px;padding:1px;background:transparent;border:0}
+.size-area{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;color:#c6d4e6}
+#brushSize{width:min(220px,40vw);accent-color:#6ee7c0}
+.action{background:#354963;border-radius:9px;padding:10px 13px;font-size:16px}
+#fullscreenBtn{font-size:19px;background:#087f67}
+#soundBtn{font-size:18px}
+@media(max-width:550px){
+ #menu{padding:15px}
+ .brand h1{font-size:27px}
+ .country-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .country-card{padding:9px}
+ .country-card img{height:60px}
+ .studio-top{min-height:43px;padding:4px}
+ .studio-top button{padding:9px}
+ #workarea{padding:3px}
+ .canvas-frame{width:100%;max-height:100%}
+ .toolbar{padding:7px 4px;gap:7px}
+ .tool{min-width:42px;height:40px;font-size:18px}
+ .swatch{width:25px;height:25px}
+ .action{padding:9px}
+}
+</style>
+</head>
+<body>
+
+<section id="menu">
+ <div class="brand">
+  <h1>🌍 WORLD <span>FLAG STUDIO</span></h1>
+  <p>Choose a country. Create your masterpiece.</p>
+ </div>
+ <div class="menu-inner">
+  <div class="menu-head">
+   <h2>🏳️ Choose your flag</h2>
+   <input class="search" id="search" placeholder="🔍 Search countries...">
+  </div>
+  <div class="country-grid" id="countryGrid"></div>
+  <div id="menuFooter">197 FLAGS · YOUR WORLD · YOUR COLORS</div>
+ </div>
+</section>
+
+<section id="studio">
+ <div class="studio-top">
+  <button id="back">← Back</button>
+  <div id="countryTitle">Loading...</div>
+  <button id="soundBtn" title="Sound">🔊</button>
+  <button id="fullscreenBtn" title="Toggle fullscreen">⛶</button>
+ </div>
+
+ <div id="workarea">
+  <div class="canvas-frame">
+   <div id="loading">🎨 Preparing your flag...</div>
+   <canvas id="art" width="1280" height="800"></canvas>
+   <canvas id="outlines" width="1280" height="800"></canvas>
+  </div>
+ </div>
+
+ <div class="toolbar">
+  <div class="toolrow">
+   <button class="tool active" data-tool="pencil">✏️<span class="tool-label">Pencil</span></button>
+   <button class="tool" data-tool="brush">🖌️<span class="tool-label">Brush</span></button>
+   <button class="tool" data-tool="marker">🖍️<span class="tool-label">Marker</span></button>
+   <button class="tool" data-tool="eraser">🧽<span class="tool-label">Eraser</span></button>
+   <button class="tool" data-tool="fill">🪣<span class="tool-label">Fill</span></button>
+   <button class="action" id="undo">↶</button>
+   <button class="action" id="redo">↷</button>
+   <button class="action" id="clear">🗑️</button>
+   <button class="action" id="save">💾</button>
+  </div>
+
+  <div class="palette">
+   <div class="swatch active" style="background:#e5243b" data-color="#e5243b"></div>
+   <div class="swatch" style="background:white" data-color="#ffffff"></div>
+   <div class="swatch" style="background:#0051ba" data-color="#0051ba"></div>
+   <div class="swatch" style="background:#ffce00" data-color="#ffce00"></div>
+   <div class="swatch" style="background:#00843d" data-color="#00843d"></div>
+   <div class="swatch" style="background:black" data-color="#000000"></div>
+   <div class="swatch" style="background:#ff7a00" data-color="#ff7a00"></div>
+   <div class="swatch" style="background:#9b59b6" data-color="#9b59b6"></div>
+   <div class="swatch" style="background:#ff69b4" data-color="#ff69b4"></div>
+   <div class="swatch" style="background:#795548" data-color="#795548"></div>
+   <input type="color" id="customColor" value="#e5243b">
+  </div>
+
+  <div class="size-area">
+   <span>BRUSH SIZE</span>
+   <input id="brushSize" type="range" min="1" max="60" value="8">
+   <span id="sizeValue">8 px</span>
+  </div>
+ </div>
+</section>
+
+<script>
+const countries=[
+["Afghanistan","af"],["Albania","al"],["Algeria","dz"],["Andorra","ad"],["Angola","ao"],["Antigua and Barbuda","ag"],["Argentina","ar"],["Armenia","am"],["Australia","au"],["Austria","at"],["Azerbaijan","az"],["Bahamas","bs"],["Bahrain","bh"],["Bangladesh","bd"],["Barbados","bb"],["Belarus","by"],["Belgium","be"],["Belize","bz"],["Benin","bj"],["Bhutan","bt"],["Bolivia","bo"],["Bosnia and Herzegovina","ba"],["Botswana","bw"],["Brazil","br"],["Brunei","bn"],["Bulgaria","bg"],["Burkina Faso","bf"],["Burundi","bi"],["Cabo Verde","cv"],["Cambodia","kh"],["Cameroon","cm"],["Canada","ca"],["Central African Republic","cf"],["Chad","td"],["Chile","cl"],["China","cn"],["Colombia","co"],["Comoros","km"],["Congo","cg"],["Costa Rica","cr"],["Croatia","hr"],["Cuba","cu"],["Cyprus","cy"],["Czechia","cz"],["Democratic Republic of the Congo","cd"],["Denmark","dk"],["Djibouti","dj"],["Dominica","dm"],["Dominican Republic","do"],["Ecuador","ec"],["Egypt","eg"],["El Salvador","sv"],["Equatorial Guinea","gq"],["Eritrea","er"],["Estonia","ee"],["Eswatini","sz"],["Ethiopia","et"],["Fiji","fj"],["Finland","fi"],["France","fr"],["Gabon","ga"],["Gambia","gm"],["Georgia","ge"],["Germany","de"],["Ghana","gh"],["Greece","gr"],["Grenada","gd"],["Guatemala","gt"],["Guinea","gn"],["Guinea-Bissau","gw"],["Guyana","gy"],["Haiti","ht"],["Honduras","hn"],["Hungary","hu"],["Iceland","is"],["India","in"],["Indonesia","id"],["Iran","ir"],["Iraq","iq"],["Ireland","ie"],["Israel","il"],["Italy","it"],["Ivory Coast","ci"],["Jamaica","jm"],["Japan","jp"],["Jordan","jo"],["Kazakhstan","kz"],["Kenya","ke"],["Kiribati","ki"],["Kosovo","xk"],["Kuwait","kw"],["Kyrgyzstan","kg"],["Laos","la"],["Latvia","lv"],["Lebanon","lb"],["Lesotho","ls"],["Liberia","lr"],["Libya","ly"],["Liechtenstein","li"],["Lithuania","lt"],["Luxembourg","lu"],["Madagascar","mg"],["Malawi","mw"],["Malaysia","my"],["Maldives","mv"],["Mali","ml"],["Malta","mt"],["Marshall Islands","mh"],["Mauritania","mr"],["Mauritius","mu"],["Mexico","mx"],["Micronesia","fm"],["Moldova","md"],["Monaco","mc"],["Mongolia","mn"],["Montenegro","me"],["Morocco","ma"],["Mozambique","mz"],["Myanmar","mm"],["Namibia","na"],["Nauru","nr"],["Nepal","np"],["Netherlands","nl"],["New Zealand","nz"],["Nicaragua","ni"],["Niger","ne"],["Nigeria","ng"],["North Korea","kp"],["North Macedonia","mk"],["Norway","no"],["Oman","om"],["Pakistan","pk"],["Palau","pw"],["Palestine","ps"],["Panama","pa"],["Papua New Guinea","pg"],["Paraguay","py"],["Peru","pe"],["Philippines","ph"],["Poland","pl"],["Portugal","pt"],["Qatar","qa"],["Romania","ro"],["Russia","ru"],["Rwanda","rw"],["Saint Kitts and Nevis","kn"],["Saint Lucia","lc"],["Saint Vincent and the Grenadines","vc"],["Samoa","ws"],["San Marino","sm"],["Sao Tome and Principe","st"],["Saudi Arabia","sa"],["Senegal","sn"],["Serbia","rs"],["Seychelles","sc"],["Sierra Leone","sl"],["Singapore","sg"],["Slovakia","sk"],["Slovenia","si"],["Solomon Islands","sb"],["Somalia","so"],["South Africa","za"],["South Korea","kr"],["South Sudan","ss"],["Spain","es"],["Sri Lanka","lk"],["Sudan","sd"],["Suriname","sr"],["Sweden","se"],["Switzerland","ch"],["Syria","sy"],["Taiwan","tw"],["Tajikistan","tj"],["Tanzania","tz"],["Thailand","th"],["Timor-Leste","tl"],["Togo","tg"],["Tonga","to"],["Trinidad and Tobago","tt"],["Tunisia","tn"],["Turkey","tr"],["Turkmenistan","tm"],["Tuvalu","tv"],["Uganda","ug"],["Ukraine","ua"],["United Arab Emirates","ae"],["United Kingdom","gb"],["United States","us"],["Uruguay","uy"],["Uzbekistan","uz"],["Vanuatu","vu"],["Vatican City","va"],["Venezuela","ve"],["Vietnam","vn"],["Western Sahara","eh"],["Yemen","ye"],["Zambia","zm"],["Zimbabwe","zw"]
+];
+
+const W=1280,H=800;
+const art=document.getElementById("art");
+const outlines=document.getElementById("outlines");
+const ctx=art.getContext("2d",{willReadFrequently:true});
+const ox=outlines.getContext("2d");
+
+let current=0,color="#e5243b",tool="pencil",brushSize=8;
+let drawing=false,last=null,region=-1;
+let labels=new Int32Array(W*H);
+let edges=new Uint8Array(W*H);
+let history=[],future=[],maskCache=new Map();
+let soundEnabled=true,audio=null,scratchTimer=null;
+let loadToken=0;
+
+// =============================
+// LOUD SATISFYING SOUND ENGINE
+// =============================
+
+let master=null;
+
+function audioStart(){
+ if(!audio){
+  audio=new(window.AudioContext||window.webkitAudioContext)();
+  master=audio.createGain();
+  master.gain.value=1.7;
+  master.connect(audio.destination);
+ }
+ if(audio.state==="suspended")audio.resume();
+}
+
+function tone(freq,duration,volume,type="sine",endFreq=null){
+ if(!soundEnabled)return;
+ audioStart();
+ const osc=audio.createOscillator();
+ const gain=audio.createGain();
+ osc.type=type;
+ osc.frequency.setValueAtTime(freq,audio.currentTime);
+ if(endFreq)osc.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq),audio.currentTime+duration);
+ gain.gain.setValueAtTime(volume,audio.currentTime);
+ gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);
+ osc.connect(gain);
+ gain.connect(master);
+ osc.start();
+ osc.stop(audio.currentTime+duration);
+}
+
+function clickSound(){
+ tone(850,.055,.25,"triangle",420);
+ tone(1250,.04,.10,"sine",700);
+}
+
+function fillSound(){
+ tone(260,.12,.25,"sine",420);
+ setTimeout(()=>tone(430,.13,.22,"sine",750),75);
+ setTimeout(()=>tone(750,.22,.18,"sine",1200),150);
+}
+
+function undoSound(){
+ tone(650,.12,.20,"triangle",280);
+}
+
+function toolSound(){
+ tone(650,.065,.19,"sine",950);
+}
+
+function strokeSound(){
+ if(!soundEnabled||scratchTimer)return;
+ audioStart();
+
+ const length=.12;
+ const buffer=audio.createBuffer(1,audio.sampleRate*length,audio.sampleRate);
+ const data=buffer.getChannelData(0);
+
+ for(let i=0;i<data.length;i++){
+  data[i]=(Math.random()*2-1)*.8;
+ }
+
+ const source=audio.createBufferSource();
+ source.buffer=buffer;
+
+ const filter=audio.createBiquadFilter();
+ filter.type="lowpass";
+ filter.frequency.value=tool==="pencil"?2600:tool==="marker"?1000:1800;
+
+ const gain=audio.createGain();
+ gain.gain.value=tool==="pencil"?.32:.24;
+
+ source.connect(filter);
+ filter.connect(gain);
+ gain.connect(master);
+ source.start();
+
+ scratchTimer=setTimeout(()=>scratchTimer=null,45);
+}
+
+// =============================
+// MAIN MENU
+// =============================
+
+const grid=document.getElementById("countryGrid");
+
+countries.forEach(([name,code],i)=>{
+ const card=document.createElement("button");
+ card.className="country-card";
+ card.innerHTML='<img loading="lazy" src="https://flagcdn.com/w320/'+code+'.png"><strong>'+name+'</strong><small>Open coloring studio →</small>';
+ card.dataset.name=name.toLowerCase();
+ card.onclick=()=>enterStudio(i);
+ grid.appendChild(card);
+});
+
+document.getElementById("search").oninput=e=>{
+ const q=e.target.value.toLowerCase();
+ document.querySelectorAll(".country-card").forEach(c=>{
+  c.style.display=c.dataset.name.includes(q)?"":"none";
+ });
+};
+
+// =============================
+// FULLSCREEN
+// =============================
+
+async function enterStudio(i){
+ current=i;
+ audioStart();
+ clickSound();
+
+ document.getElementById("menu").style.display="none";
+ document.getElementById("studio").classList.add("show");
+
+ try{
+  if(!document.fullscreenElement){
+   await document.getElementById("studio").requestFullscreen();
+  }
+ }catch(e){}
+
+ loadFlag(i);
+}
+
+async function toggleFullscreen(){
+ audioStart();
+ try{
+  if(!document.fullscreenElement){
+   await document.getElementById("studio").requestFullscreen();
+  }else{
+   await document.exitFullscreen();
+  }
+  clickSound();
+ }catch(e){
+  clickSound();
+ }
+}
+
+document.getElementById("fullscreenBtn").onclick=toggleFullscreen;
+
+document.addEventListener("fullscreenchange",()=>{
+ document.getElementById("fullscreenBtn").textContent=
+  document.fullscreenElement?"⛶":"⛶";
+});
+
+document.getElementById("back").onclick=()=>{
+ loadToken++;
+ drawing=false;
+ document.getElementById("studio").classList.remove("show");
+ document.getElementById("menu").style.display="block";
+ if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+ clickSound();
+};
+
+// =============================
+// FLAG OUTLINE GENERATOR
+// =============================
+
+function clearFlag(){
+ ctx.clearRect(0,0,W,H);
+ ox.clearRect(0,0,W,H);
+ history=[];
+ future=[];
+ maskCache.clear();
+ labels.fill(-1);
+ edges.fill(0);
+}
+
+function buildRegions(imageData){
+ const d=imageData.data;
+ labels.fill(-1);
+ edges.fill(0);
+ maskCache.clear();
+
+ // One-pixel outline detection.
+ for(let y=0;y<H;y++){
+  for(let x=0;x<W;x++){
+   const p=y*W+x,q=p*4;
+   let edge=false;
+
+   if(x<W-1){
+    const r=q+4;
+    const diff=Math.abs(d[q]-d[r])+Math.abs(d[q+1]-d[r+1])+Math.abs(d[q+2]-d[r+2]);
+    if(diff>65)edge=true;
+   }
+   if(y<H-1){
+    const r=q+W*4;
+    const diff=Math.abs(d[q]-d[r])+Math.abs(d[q+1]-d[r+1])+Math.abs(d[q+2]-d[r+2]);
+    if(diff>65)edge=true;
+   }
+   if(x===0||y===0||x===W-1||y===H-1)edge=true;
+   edges[p]=edge?1:0;
+  }
+ }
+
+ const queue=new Int32Array(W*H);
+ let id=0;
+
+ for(let start=0;start<W*H;start++){
+  if(edges[start]||labels[start]!==-1)continue;
+  let head=0,tail=0;
+  queue[tail++]=start;
+  labels[start]=id;
+
+  while(head<tail){
+   const p=queue[head++];
+   const x=p%W,y=Math.floor(p/W);
+   const ns=[
+    x>0?p-1:-1,x<W-1?p+1:-1,
+    y>0?p-W:-1,y<H-1?p+W:-1
+   ];
+
+   for(const n of ns){
+    if(n>=0&&!edges[n]&&labels[n]===-1){
+     labels[n]=id;
+     queue[tail++]=n;
+    }
+   }
+  }
+  id++;
+ }
+
+ const result=ox.createImageData(W,H);
+ for(let p=0;p<W*H;p++){
+  if(edges[p]){
+   const q=p*4;
+   result.data[q]=25;
+   result.data[q+1]=25;
+   result.data[q+2]=25;
+   result.data[q+3]=255;
+  }
+ }
+ ox.putImageData(result,0,0);
+}
+
+function getMask(id){
+ if(maskCache.has(id))return maskCache.get(id);
+ const c=document.createElement("canvas");
+ c.width=W;c.height=H;
+ const m=c.getContext("2d");
+ const pixels=m.createImageData(W,H);
+
+ for(let p=0;p<W*H;p++){
+  if(labels[p]===id){
+   const q=p*4;
+   pixels.data[q]=255;
+   pixels.data[q+1]=255;
+   pixels.data[q+2]=255;
+   pixels.data[q+3]=255;
+  }
+ }
+ m.putImageData(pixels,0,0);
+ maskCache.set(id,c);
+ return c;
+}
+
+function getRegion(x,y){
+ const px=Math.max(0,Math.min(W-1,Math.floor(x)));
+ const py=Math.max(0,Math.min(H-1,Math.floor(y)));
+ return labels[py*W+px];
+}
+
+function loadFlag(i){
+ const token=++loadToken;
+ const [name,code]=countries[i];
+ document.getElementById("countryTitle").textContent=name;
+ const loading=document.getElementById("loading");
+ loading.style.display="flex";
+ loading.textContent="🎨 Preparing "+name+"...";
+ clearFlag();
+
+ const img=new Image();
+ img.crossOrigin="anonymous";
+
+ img.onload=()=>{
+  if(token!==loadToken)return;
+  try{
+   const temp=document.createElement("canvas");
+   temp.width=W;temp.height=H;
+   const t=temp.getContext("2d",{willReadFrequently:true});
+   t.fillStyle="white";
+   t.fillRect(0,0,W,H);
+   t.drawImage(img,0,0,W,H);
+   buildRegions(t.getImageData(0,0,W,H));
+   loading.style.display="none";
+   fillSound();
+  }catch(e){
+   loading.textContent="Could not process flag.";
+  }
+ };
+
+ img.onerror=()=>{
+  if(token!==loadToken)return;
+  loading.textContent="Could not load flag. Check your internet.";
+ };
+
+ img.src="https://flagcdn.com/w640/"+code+".png";
+}
+
+// =============================
+// DRAWING
+// =============================
+
+const tempCanvas=document.createElement("canvas");
+tempCanvas.width=W;
+tempCanvas.height=H;
+const tc=tempCanvas.getContext("2d");
+
+function position(e){
+ const r=art.getBoundingClientRect();
+ return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};
+}
+
+function snapshot(){
+ history.push(ctx.getImageData(0,0,W,H));
+ if(history.length>25)history.shift();
+ future=[];
+}
+
+function paint(a,b){
+ tc.clearRect(0,0,W,H);
+ tc.globalCompositeOperation="source-over";
+ tc.lineCap="round";
+ tc.lineJoin="round";
+
+ tc.lineWidth=tool==="pencil"?Math.max(1,brushSize*.55):tool==="marker"?brushSize*1.8:brushSize;
+ tc.strokeStyle=color;
+ tc.globalAlpha=tool==="marker"?.55:1;
+
+ tc.beginPath();
+ tc.moveTo(a.x,a.y);
+ tc.lineTo(b.x,b.y);
+ tc.stroke();
+ tc.globalAlpha=1;
+
+ // Keep strokes inside their selected section.
+ const mask=getMask(region);
+ tc.globalCompositeOperation="destination-in";
+ tc.drawImage(mask,0,0);
+ tc.globalCompositeOperation="source-over";
+
+ if(tool==="eraser"){
+  ctx.save();
+  ctx.globalCompositeOperation="destination-out";
+  ctx.drawImage(tempCanvas,0,0);
+  ctx.restore();
+ }else{
+  ctx.drawImage(tempCanvas,0,0);
+ }
+
+ strokeSound();
+}
+
+function fillRegion(x,y){
+ const id=getRegion(x,y);
+ if(id<0)return;
+ snapshot();
+
+ const pixels=ctx.getImageData(0,0,W,H);
+ const d=pixels.data;
+ const r=parseInt(color.slice(1,3),16);
+ const g=parseInt(color.slice(3,5),16);
+ const b=parseInt(color.slice(5,7),16);
+
+ for(let p=0;p<W*H;p++){
+  if(labels[p]===id){
+   const q=p*4;
+   d[q]=r;d[q+1]=g;d[q+2]=b;d[q+3]=255;
+  }
+ }
+ ctx.putImageData(pixels,0,0);
+ fillSound();
+}
+
+art.addEventListener("pointerdown",e=>{
+ if(document.getElementById("loading").style.display!=="none")return;
+ e.preventDefault();
+ audioStart();
+
+ const p=position(e);
+ if(tool==="fill"){
+  fillRegion(p.x,p.y);
+  return;
+ }
+
+ const id=getRegion(p.x,p.y);
+ if(id<0)return;
+
+ snapshot();
+ drawing=true;
+ last=p;
+ region=id;
+ art.setPointerCapture(e.pointerId);
+ paint(p,p);
+});
+
+art.addEventListener("pointermove",e=>{
+ if(!drawing)return;
+ const p=position(e);
+ paint(last,p);
+ last=p;
+});
+
+function stopDrawing(){
+ drawing=false;
+ last=null;
+}
+art.addEventListener("pointerup",stopDrawing);
+art.addEventListener("pointercancel",stopDrawing);
+
+// =============================
+// TOOL SELECTION
+// =============================
+
+document.querySelectorAll("[data-tool]").forEach(btn=>{
+ btn.onclick=()=>{
+  tool=btn.dataset.tool;
+  document.querySelectorAll("[data-tool]").forEach(b=>{
+   b.classList.toggle("active",b===btn);
+  });
+  toolSound();
+ };
+});
+
+document.getElementById("brushSize").oninput=e=>{
+ brushSize=Number(e.target.value);
+ document.getElementById("sizeValue").textContent=brushSize+" px";
+};
+
+// =============================
+// COLORS
+// =============================
+
+function setColor(c){
+ color=c;
+ document.querySelectorAll(".swatch").forEach(s=>{
+  s.classList.toggle("active",s.dataset.color===c);
+ });
+ tone(600,.07,.16,"sine",850);
+}
+
+document.querySelectorAll(".swatch").forEach(s=>{
+ s.onclick=()=>setColor(s.dataset.color);
+});
+
+document.getElementById("customColor").oninput=e=>{
+ setColor(e.target.value);
+};
+
+// =============================
+// UNDO / REDO / CLEAR / SAVE
+// =============================
+
+document.getElementById("undo").onclick=()=>{
+ if(!history.length)return;
+ future.push(ctx.getImageData(0,0,W,H));
+ ctx.putImageData(history.pop(),0,0);
+ undoSound();
+};
+
+document.getElementById("redo").onclick=()=>{
+ if(!future.length)return;
+ history.push(ctx.getImageData(0,0,W,H));
+ ctx.putImageData(future.pop(),0,0);
+ tone(500,.1,.17,"sine",750);
+};
+
+document.getElementById("clear").onclick=()=>{
+ if(!confirm("Clear your coloring?"))return;
+ snapshot();
+ ctx.clearRect(0,0,W,H);
+ tone(250,.2,.18,"sine",100);
+};
+
+document.getElementById("save").onclick=()=>{
+ const result=document.createElement("canvas");
+ result.width=W;result.height=H;
+ const r=result.getContext("2d");
+ r.fillStyle="white";
+ r.fillRect(0,0,W,H);
+ r.drawImage(art,0,0);
+ r.drawImage(outlines,0,0);
+
+ const a=document.createElement("a");
+ a.download=countries[current][0].replaceAll(" ","_")+"_colored.png";
+ a.href=result.toDataURL("image/png");
+ a.click();
+ fillSound();
+};
+
+// =============================
+// SOUND BUTTON
+// =============================
+
+document.getElementById("soundBtn").onclick=e=>{
+ audioStart();
+ soundEnabled=!soundEnabled;
+ e.target.textContent=soundEnabled?"🔊":"🔇";
+ if(soundEnabled)clickSound();
+};
+
+</script>
+</body>
+</html>
